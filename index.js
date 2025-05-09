@@ -1,6 +1,7 @@
 const express = require("express");
 const authRoutes = require("./routes/authRoutes");
 const pasienRoutes = require("./routes/pasienRoutes");
+const skpRoutes = require("./routes/skpRoutes");
 require("dotenv").config();
 
 const app = express();
@@ -9,6 +10,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/pasien", pasienRoutes);
+app.use("/api/skp", skpRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -60,12 +60,10 @@ exports.validatePasien = (req, res, next) => {
     });
   }
   if (!["Laki-laki", "Perempuan"].includes(jenis_kelamin)) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Jenis kelamin must be Laki-laki or Perempuan",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Jenis kelamin must be Laki-laki or Perempuan",
+    });
   }
   if (isNaN(Date.parse(tgl_lahir))) {
     return res
@@ -85,6 +83,32 @@ exports.validateCsvUpload = (req, res, next) => {
     return res
       .status(400)
       .json({ success: false, message: "File must be a CSV" });
+  }
+  next();
+};
+
+exports.validateSkp = (req, res, next) => {
+  const { kegiatan_skp, periode_tahun, active } = req.body;
+  if (!kegiatan_skp || !periode_tahun) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Kegiatan SKP and periode tahun are required",
+      });
+  }
+  if (periode_tahun < 2000 || periode_tahun > 2100) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Periode tahun must be between 2000 and 2100",
+      });
+  }
+  if (active !== undefined && ![0, 1].includes(active)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Active must be 0 or 1" });
   }
   next();
 };
