@@ -4,6 +4,7 @@ const pasienRoutes = require("./routes/pasienRoutes");
 const skpRoutes = require("./routes/skpRoutes");
 const jenisKegiatanRoutes = require("./routes/jenisKegiatanRoutes");
 const detailSkpRoutes = require("./routes/detailSkpRoutes");
+const kegiatanRoutes = require("./routes/kegiatanRoutes");
 require("dotenv").config();
 
 const app = express();
@@ -15,6 +16,7 @@ app.use("/api/pasien", pasienRoutes);
 app.use("/api/skp", skpRoutes);
 app.use("/api/jenis-kegiatan", jenisKegiatanRoutes);
 app.use("/api/detail-skp", detailSkpRoutes);
+app.use("/api/kegiatan", kegiatanRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -128,20 +128,54 @@ exports.validateJenisKegiatan = (req, res, next) => {
 exports.validateDetailSkp = (req, res, next) => {
   const { skp_id, jenis_kegiatan_id } = req.body;
   if (!skp_id || !jenis_kegiatan_id) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Skp id and jenis kegiatan id are required",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Skp id and jenis kegiatan id are required",
+    });
   }
   if (isNaN(skp_id) || isNaN(jenis_kegiatan_id)) {
+    return res.status(400).json({
+      success: false,
+      message: "Skp id and jenis kegiatan id must be numbers",
+    });
+  }
+  next();
+};
+
+exports.validateKegiatan = (req, res, next) => {
+  const { skp_id, rekam_medis, tgl_kegiatan } = req.body;
+  if (!skp_id || !rekam_medis || !tgl_kegiatan) {
     return res
       .status(400)
       .json({
         success: false,
-        message: "Skp id and jenis kegiatan id must be numbers",
+        message: "Skp id, rekam medis, and tgl kegiatan are required",
       });
+  }
+  if (isNaN(skp_id)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Skp id must be a number" });
+  }
+  if (isNaN(Date.parse(tgl_kegiatan))) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid tgl kegiatan format" });
+  }
+  next();
+};
+
+exports.validateEditKegiatan = (req, res, next) => {
+  const { tgl_kegiatan } = req.body;
+  if (!tgl_kegiatan) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Tgl kegiatan is required" });
+  }
+  if (isNaN(Date.parse(tgl_kegiatan))) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid tgl kegiatan format" });
   }
   next();
 };
