@@ -112,17 +112,36 @@ exports.validateSkp = (req, res, next) => {
 exports.validateJenisKegiatan = (req, res, next) => {
   const { tingkat_kegiatan, nama_kegiatan, active } = req.body;
   if (!tingkat_kegiatan || !nama_kegiatan) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Tingkat kegiatan and nama kegiatan are required",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Tingkat kegiatan and nama kegiatan are required",
+    });
   }
   if (active !== undefined && ![0, 1].includes(active)) {
     return res
       .status(400)
       .json({ success: false, message: "Active must be 0 or 1" });
+  }
+  next();
+};
+
+exports.validateDetailSkp = (req, res, next) => {
+  const { skp_id, jenis_kegiatan_id } = req.body;
+  if (!skp_id || !jenis_kegiatan_id) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Skp id and jenis kegiatan id are required",
+      });
+  }
+  if (isNaN(skp_id) || isNaN(jenis_kegiatan_id)) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Skp id and jenis kegiatan id must be numbers",
+      });
   }
   next();
 };
