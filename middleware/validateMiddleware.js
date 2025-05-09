@@ -90,19 +90,33 @@ exports.validateCsvUpload = (req, res, next) => {
 exports.validateSkp = (req, res, next) => {
   const { kegiatan_skp, periode_tahun, active } = req.body;
   if (!kegiatan_skp || !periode_tahun) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Kegiatan SKP and periode tahun are required",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Kegiatan SKP and periode tahun are required",
+    });
   }
   if (periode_tahun < 2000 || periode_tahun > 2100) {
+    return res.status(400).json({
+      success: false,
+      message: "Periode tahun must be between 2000 and 2100",
+    });
+  }
+  if (active !== undefined && ![0, 1].includes(active)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Active must be 0 or 1" });
+  }
+  next();
+};
+
+exports.validateJenisKegiatan = (req, res, next) => {
+  const { tingkat_kegiatan, nama_kegiatan, active } = req.body;
+  if (!tingkat_kegiatan || !nama_kegiatan) {
     return res
       .status(400)
       .json({
         success: false,
-        message: "Periode tahun must be between 2000 and 2100",
+        message: "Tingkat kegiatan and nama kegiatan are required",
       });
   }
   if (active !== undefined && ![0, 1].includes(active)) {
