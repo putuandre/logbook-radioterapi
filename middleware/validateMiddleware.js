@@ -145,12 +145,10 @@ exports.validateDetailSkp = (req, res, next) => {
 exports.validateKegiatan = (req, res, next) => {
   const { skp_id, rekam_medis, tgl_kegiatan } = req.body;
   if (!skp_id || !rekam_medis || !tgl_kegiatan) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Skp id, rekam medis, and tgl kegiatan are required",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Skp id, rekam medis, and tgl kegiatan are required",
+    });
   }
   if (isNaN(skp_id)) {
     return res
@@ -176,6 +174,37 @@ exports.validateEditKegiatan = (req, res, next) => {
     return res
       .status(400)
       .json({ success: false, message: "Invalid tgl kegiatan format" });
+  }
+  next();
+};
+
+exports.validateKaru = (req, res, next) => {
+  const { nama, nip, jabatan, active } = req.body;
+  if (!nama || !nip || !jabatan) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Nama, nip, and jabatan are required" });
+  }
+  if (active !== undefined && ![0, 1].includes(parseInt(active))) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Active must be 0 or 1" });
+  }
+  if (!req.file && req.method === "POST") {
+    return res
+      .status(400)
+      .json({ success: false, message: "Ttd file is required" });
+  }
+  if (
+    req.file &&
+    !["image/jpeg", "image/jpg", "image/png"].includes(req.file.mimetype)
+  ) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Ttd must be an image (jpg, jpeg, png)",
+      });
   }
   next();
 };
