@@ -7,11 +7,13 @@ const detailSkpRoutes = require("./routes/detailSkpRoutes");
 const kegiatanRoutes = require("./routes/kegiatanRoutes");
 const karuRoutes = require("./routes/karuRoutes");
 const kaInstalasiRoutes = require("./routes/kaInstalasiRoutes");
+const laporanSkpRoutes = require("./routes/laporanSkpRoutes");
 require("dotenv").config();
 
 const app = express();
 
 app.use(express.json());
+app.use("/uploads", express.static("uploads"));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/pasien", pasienRoutes);
@@ -21,6 +23,7 @@ app.use("/api/detail-skp", detailSkpRoutes);
 app.use("/api/kegiatan", kegiatanRoutes);
 app.use("/api/karu", karuRoutes);
 app.use("/api/ka-instalasi", kaInstalasiRoutes);
+app.use("/api/laporan-skp", laporanSkpRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
