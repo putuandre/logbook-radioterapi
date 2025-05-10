@@ -199,12 +199,28 @@ exports.validateKaru = (req, res, next) => {
     req.file &&
     !["image/jpeg", "image/jpg", "image/png"].includes(req.file.mimetype)
   ) {
+    return res.status(400).json({
+      success: false,
+      message: "Ttd must be an image (jpg, jpeg, png)",
+    });
+  }
+  next();
+};
+
+exports.validateKaInstalasi = (req, res, next) => {
+  const { nama, nip, jabatan, sip, active } = req.body;
+  if (!nama || !nip || !jabatan || !sip) {
     return res
       .status(400)
       .json({
         success: false,
-        message: "Ttd must be an image (jpg, jpeg, png)",
+        message: "Nama, nip, jabatan, and sip are required",
       });
+  }
+  if (active !== undefined && ![0, 1].includes(parseInt(active))) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Active must be 0 or 1" });
   }
   next();
 };

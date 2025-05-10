@@ -6,6 +6,7 @@ const jenisKegiatanRoutes = require("./routes/jenisKegiatanRoutes");
 const detailSkpRoutes = require("./routes/detailSkpRoutes");
 const kegiatanRoutes = require("./routes/kegiatanRoutes");
 const karuRoutes = require("./routes/karuRoutes");
+const kaInstalasiRoutes = require("./routes/kaInstalasiRoutes");
 require("dotenv").config();
 
 const app = express();
@@ -19,6 +20,7 @@ app.use("/api/jenis-kegiatan", jenisKegiatanRoutes);
 app.use("/api/detail-skp", detailSkpRoutes);
 app.use("/api/kegiatan", kegiatanRoutes);
 app.use("/api/karu", karuRoutes);
+app.use("/api/ka-instalasi", kaInstalasiRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
