@@ -20,6 +20,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.get("/", authMiddleware.verifyToken, karuController.getAllKaru);
+router.get("/:id", authMiddleware.verifyToken, karuController.getKaruById);
 router.post(
   "/",
   authMiddleware.verifyToken,

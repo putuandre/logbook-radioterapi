@@ -9,6 +9,11 @@ router.get(
   authMiddleware.verifyToken,
   kaInstalasiController.getAllKaInstalasi
 );
+router.get(
+  "/:id",
+  authMiddleware.verifyToken,
+  kaInstalasiController.getKaInstalasiById
+);
 router.post(
   "/",
   authMiddleware.verifyToken,

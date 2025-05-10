@@ -24,6 +24,32 @@ exports.getAllKaru = (req, res) => {
   });
 };
 
+exports.getKaruById = (req, res) => {
+  const { id } = req.params;
+
+  Karu.findById(id, (err, results) => {
+    if (err) {
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message: "Database error",
+          error: err.message,
+        });
+    }
+    if (results.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Karu not found" });
+    }
+    res.json({
+      success: true,
+      data: { karu: results[0] },
+      message: "Karu retrieved successfully",
+    });
+  });
+};
+
 exports.createKaru = (req, res) => {
   const karuData = {
     nama: req.body.nama,
@@ -80,7 +106,7 @@ exports.updateKaru = async (req, res) => {
     nama: req.body.nama,
     nip: req.body.nip,
     jabatan: req.body.jabatan,
-    ttd: req.file ? `/uploads/ttd/${req.file.filename}` : rows.ttd, // Gunakan ttd lama jika tidak ada file baru
+    ttd: req.file ? `/uploads/ttd/${req.file.filename}` : rows.ttd,
     active: req.body.active !== undefined ? parseInt(req.body.active) : 1,
   };
 

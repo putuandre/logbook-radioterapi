@@ -12,6 +12,13 @@ const KaInstalasi = {
 
     pool.query(query, queryParams, callback);
   },
+  findById: (id, callback) => {
+    pool.query(
+      "SELECT id, nama, nip, jabatan, sip, active FROM ka_instalasi WHERE id = ?",
+      [id],
+      callback
+    );
+  },
   create: (data, callback) => {
     const query = `
       INSERT INTO ka_instalasi (nama, nip, jabatan, sip, active)

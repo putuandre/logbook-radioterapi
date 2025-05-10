@@ -6,6 +6,25 @@ exports.getAllKaInstalasi = (req, res) => {
 
   KaInstalasi.findAll(parsedActive, (err, results) => {
     if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err.message,
+      });
+    }
+    res.json({
+      success: true,
+      data: { ka_instalasi: results },
+      message: "Ka Instalasi retrieved successfully",
+    });
+  });
+};
+
+exports.getKaInstalasiById = (req, res) => {
+  const { id } = req.params;
+
+  KaInstalasi.findById(id, (err, results) => {
+    if (err) {
       return res
         .status(500)
         .json({
@@ -14,9 +33,14 @@ exports.getAllKaInstalasi = (req, res) => {
           error: err.message,
         });
     }
+    if (results.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Ka Instalasi not found" });
+    }
     res.json({
       success: true,
-      data: { ka_instalasi: results },
+      data: { ka_instalasi: results[0] },
       message: "Ka Instalasi retrieved successfully",
     });
   });
@@ -33,13 +57,11 @@ exports.createKaInstalasi = (req, res) => {
 
   KaInstalasi.create(kaInstalasiData, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to create ka instalasi",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create ka instalasi",
+        error: err.message,
+      });
     }
     res.status(201).json({
       success: true,
@@ -61,13 +83,11 @@ exports.updateKaInstalasi = (req, res) => {
 
   KaInstalasi.update(id, kaInstalasiData, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to update ka instalasi",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update ka instalasi",
+        error: err.message,
+      });
     }
     if (result.affectedRows === 0) {
       return res
@@ -87,13 +107,11 @@ exports.deleteKaInstalasi = (req, res) => {
 
   KaInstalasi.delete(id, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to delete ka instalasi",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete ka instalasi",
+        error: err.message,
+      });
     }
     if (result.affectedRows === 0) {
       return res

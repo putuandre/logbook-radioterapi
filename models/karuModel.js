@@ -36,7 +36,11 @@ const Karu = {
     );
   },
   findById: (id, callback) => {
-    pool.query("SELECT ttd FROM karu WHERE id = ?", [id], callback);
+    pool.query(
+      "SELECT id, nama, nip, jabatan, ttd, active FROM karu WHERE id = ?",
+      [id],
+      callback
+    );
   },
   delete: (id, callback) => {
     pool.query("DELETE FROM karu WHERE id = ?", [id], callback);
