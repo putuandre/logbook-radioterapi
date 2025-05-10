@@ -1,10 +1,11 @@
 const Skp = require("../models/skpModel");
 
 exports.getAllSkp = (req, res) => {
-  const { search = "", page = 1, limit = 10 } = req.query;
+  const { search = "", active, page = 1, limit = 10 } = req.query;
   const parsedPage = parseInt(page);
   const parsedLimit = parseInt(limit);
   const pegawai_id = req.user.id; // Dari JWT
+  const parsedActive = active === "1" ? 1 : undefined; // Hanya terima active=1, jika tidak, abaikan filter
 
   if (
     isNaN(parsedPage) ||
@@ -20,6 +21,7 @@ exports.getAllSkp = (req, res) => {
   Skp.findAll(
     pegawai_id,
     search,
+    parsedActive,
     parsedPage,
     parsedLimit,
     (err, { results, total }) => {
@@ -61,13 +63,11 @@ exports.createSkp = (req, res) => {
 
   Skp.create(skpData, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to create SKP",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create SKP",
+        error: err.message,
+      });
     }
     res.status(201).json({
       success: true,
@@ -89,13 +89,11 @@ exports.updateSkp = (req, res) => {
 
   Skp.update(id, pegawai_id, skpData, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to update SKP",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update SKP",
+        error: err.message,
+      });
     }
     if (result.affectedRows === 0) {
       return res
@@ -116,13 +114,11 @@ exports.deleteSkp = (req, res) => {
 
   Skp.delete(id, pegawai_id, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to delete SKP",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete SKP",
+        error: err.message,
+      });
     }
     if (result.affectedRows === 0) {
       return res

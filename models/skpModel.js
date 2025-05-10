@@ -1,14 +1,24 @@
 const pool = require("../config/database");
 
 const Skp = {
-  findAll: (pegawai_id, search, page, limit, callback) => {
+  findAll: (pegawai_id, search, active, page, limit, callback) => {
     const offset = (page - 1) * limit;
     let query = "SELECT * FROM skp WHERE pegawai_id = ?";
     let queryParams = [pegawai_id];
+    let conditions = [];
+
+    if (active === 1) {
+      conditions.push("active = ?");
+      queryParams.push(1);
+    }
 
     if (search) {
-      query += " AND (kegiatan_skp LIKE ? OR deskripsi LIKE ?)";
+      conditions.push("(kegiatan_skp LIKE ? OR deskripsi LIKE ?)");
       queryParams.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (conditions.length > 0) {
+      query += " AND " + conditions.join(" AND ");
     }
 
     query += " LIMIT ? OFFSET ?";
@@ -16,15 +26,23 @@ const Skp = {
 
     pool.query(query, queryParams, (err, results) => {
       if (err) return callback(err);
-      pool.query(
-        "SELECT COUNT(*) as total FROM skp WHERE pegawai_id = ?" +
-          (search ? " AND (kegiatan_skp LIKE ? OR deskripsi LIKE ?)" : ""),
-        search ? [pegawai_id, `%${search}%`, `%${search}%`] : [pegawai_id],
-        (err, countResult) => {
-          if (err) return callback(err);
-          callback(null, { results, total: countResult[0].total });
-        }
-      );
+      let countQuery = "SELECT COUNT(*) as total FROM skp WHERE pegawai_id = ?";
+      let countParams = [pegawai_id];
+
+      if (active === 1) {
+        countQuery += " AND active = ?";
+        countParams.push(1);
+      }
+
+      if (search) {
+        countQuery += " AND (kegiatan_skp LIKE ? OR deskripsi LIKE ?)";
+        countParams.push(`%${search}%`, `%${search}%`);
+      }
+
+      pool.query(countQuery, countParams, (err, countResult) => {
+        if (err) return callback(err);
+        callback(null, { results, total: countResult[0].total });
+      });
     });
   },
   create: (data, callback) => {
