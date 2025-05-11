@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
 const pasienRoutes = require("./routes/pasienRoutes");
 const skpRoutes = require("./routes/skpRoutes");
@@ -13,6 +14,15 @@ const pegawaiRoutes = require("./routes/pegawaiRoutes");
 require("dotenv").config();
 
 const app = express();
+
+// Konfigurasi CORS
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:3001",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
