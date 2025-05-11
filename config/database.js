@@ -9,6 +9,8 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  timezone: "Z", // Gunakan UTC untuk konsistensi
+  dateStrings: true, // Kembalikan DATE sebagai string
 });
 
 pool.getConnection((err, connection) => {

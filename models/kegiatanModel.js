@@ -23,7 +23,7 @@ const Kegiatan = {
       queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    query += " LIMIT ? OFFSET ?";
+    query += " ORDER BY k.tgl_kegiatan DESC LIMIT ? OFFSET ?";
     queryParams.push(limit, offset);
 
     pool.query(query, queryParams, (err, results) => {
