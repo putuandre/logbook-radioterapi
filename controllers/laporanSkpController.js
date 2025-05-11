@@ -82,6 +82,13 @@ exports.generateLaporanSkp = async (req, res) => {
     const options = { day: "numeric", month: "long", year: "numeric" };
     const tanggal_ttd_formatted = date.toLocaleDateString("id-ID", options);
 
+    // Format bulan dan tahun dari end_date untuk nama file
+    const endDate = new Date(end_date);
+    const bulanTahun = endDate.toLocaleDateString("id-ID", {
+      month: "long",
+      year: "numeric",
+    });
+
     // Buat base URL dinamis
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
@@ -168,7 +175,7 @@ exports.generateLaporanSkp = async (req, res) => {
 <body>
     <img src="${
       htmlData.base_url
-    }/uploads/assets/kop_surat.jpg" class="header-img" alt="Kop Surat">
+    }/Uploads/assets/kop_surat.jpg" class="header-img" alt="Kop Surat">
     <div class="title">
         LOGBOOK KEGIATAN RADIOGRAFER<br>
         ${htmlData.kegiatan_skp}
@@ -220,6 +227,12 @@ exports.generateLaporanSkp = async (req, res) => {
 </body>
 </html>`;
 
+    // Buat nama file dinamis: Logbook <kegiatan_skp> <bulan> <tahun>.pdf
+    const safeKegiatanSkp = htmlData.kegiatan_skp
+      .replace(/[^a-zA-Z0-9 ]/g, "")
+      .trim();
+    const fileName = `Logbook ${safeKegiatanSkp} ${bulanTahun}.pdf`;
+
     // Render PDF dengan Puppeteer
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
@@ -231,12 +244,9 @@ exports.generateLaporanSkp = async (req, res) => {
     });
     await browser.close();
 
-    // Kirim PDF sebagai respon
+    // Kirim PDF sebagai respon dengan nama file dinamis
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=laporan_skp.pdf"
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
     res.status(200).send(pdfBuffer);
   } catch (error) {
     res.status(500).json({
