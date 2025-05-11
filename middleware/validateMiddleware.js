@@ -50,6 +50,75 @@ exports.validateLogin = (req, res, next) => {
   next();
 };
 
+exports.validateChangePassword = (req, res, next) => {
+  const { current_password, new_password } = req.body;
+  if (!current_password || !new_password) {
+    return res.status(400).json({
+      success: false,
+      message: "Current password and new password are required",
+    });
+  }
+  if (new_password.length < 8) {
+    return res.status(400).json({
+      success: false,
+      message: "New password must be at least 8 characters",
+    });
+  }
+  next();
+};
+
+exports.validateUpdatePegawai = (req, res, next) => {
+  const {
+    nip,
+    nama_pegawai,
+    jabatan,
+    unit_kerja,
+    email,
+    no_sip,
+    role,
+    active,
+  } = req.body;
+  if (
+    !nip ||
+    !nama_pegawai ||
+    !jabatan ||
+    !unit_kerja ||
+    !email ||
+    !role ||
+    active === undefined
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "All required fields must be provided",
+    });
+  }
+  if (!/^\d{18}$/.test(nip)) {
+    return res.status(400).json({
+      success: false,
+      message: "NIP must be 18 digits",
+    });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid email format",
+    });
+  }
+  if (!["admin", "user"].includes(role)) {
+    return res.status(400).json({
+      success: false,
+      message: "Role must be 'admin' or 'user'",
+    });
+  }
+  if (typeof active !== "number" || ![0, 1].includes(active)) {
+    return res.status(400).json({
+      success: false,
+      message: "Active must be 0 or 1",
+    });
+  }
+  next();
+};
+
 exports.validatePasien = (req, res, next) => {
   const { rekam_medis, nama_pasien, jenis_kelamin, tgl_lahir } = req.body;
   if (!rekam_medis || !nama_pasien || !jenis_kelamin || !tgl_lahir) {
@@ -210,12 +279,10 @@ exports.validateKaru = (req, res, next) => {
 exports.validateKaInstalasi = (req, res, next) => {
   const { nama, nip, jabatan, sip, active } = req.body;
   if (!nama || !nip || !jabatan || !sip) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Nama, nip, jabatan, and sip are required",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Nama, nip, jabatan, and sip are required",
+    });
   }
   if (active !== undefined && ![0, 1].includes(parseInt(active))) {
     return res

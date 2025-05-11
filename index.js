@@ -9,6 +9,7 @@ const karuRoutes = require("./routes/karuRoutes");
 const kaInstalasiRoutes = require("./routes/kaInstalasiRoutes");
 const laporanSkpRoutes = require("./routes/laporanSkpRoutes");
 const laporanLogbookRoutes = require("./routes/laporanLogbookRoutes");
+const pegawaiRoutes = require("./routes/pegawaiRoutes");
 require("dotenv").config();
 
 const app = express();
@@ -26,6 +27,7 @@ app.use("/api/karu", karuRoutes);
 app.use("/api/ka-instalasi", kaInstalasiRoutes);
 app.use("/api/laporan-skp", laporanSkpRoutes);
 app.use("/api/laporan-logbook", laporanLogbookRoutes);
+app.use("/api/pegawai", pegawaiRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
