@@ -120,8 +120,8 @@ exports.generateLaporanSkp = async (req, res) => {
         }
         body {
             font-family: Arial, sans-serif;
-            font-size: 12pt;
-            line-height: 1.1;
+            font-size: 11pt;
+            line-height: 1;
         }
         .header-img {
             width: 100%;
@@ -129,13 +129,14 @@ exports.generateLaporanSkp = async (req, res) => {
         }
         .title {
             text-align: center;
-            font-size: 16pt;
+            font-size: 14pt;
             font-weight: bold;
             margin-bottom: 20px;
             text-transform: uppercase;
         }
         .info {
             margin-bottom: 20px;
+            line-height: 0.3;
         }
         .info p {
             display: flex;
@@ -165,10 +166,11 @@ exports.generateLaporanSkp = async (req, res) => {
         .signature {
             text-align: right;
             margin-top: 20px;
+            line-height: 0.3;
         }
         .signature img {
-            height: 75px;
-            margin: 10px 0;
+            height: 65px;
+            margin: 0px 0;
         }
     </style>
 </head>
