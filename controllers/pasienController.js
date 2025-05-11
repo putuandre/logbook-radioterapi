@@ -20,13 +20,11 @@ exports.getAllPasien = (req, res) => {
 
   Pasien.findAll(search, parsedPage, parsedLimit, (err, { results, total }) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Database error",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err.message,
+      });
     }
     res.json({
       success: true,
@@ -51,13 +49,11 @@ exports.createPasien = (req, res) => {
       if (err.message === "Rekam medis already exists") {
         return res.status(409).json({ success: false, message: err.message });
       }
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to create pasien",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create pasien",
+        error: err.message,
+      });
     }
     res.status(201).json({
       success: true,
@@ -75,13 +71,11 @@ exports.updatePasien = (req, res) => {
       if (err.message === "Rekam medis already exists") {
         return res.status(409).json({ success: false, message: err.message });
       }
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to update pasien",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update pasien",
+        error: err.message,
+      });
     }
     if (result.affectedRows === 0) {
       return res
@@ -100,13 +94,11 @@ exports.deletePasien = (req, res) => {
   const { id } = req.params;
   Pasien.delete(id, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to delete pasien",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete pasien",
+        error: err.message,
+      });
     }
     if (result.affectedRows === 0) {
       return res
@@ -150,13 +142,11 @@ exports.importPasienCsv = (req, res) => {
       Pasien.checkMultipleRekamMedis(rekamMedisList, (err, existing) => {
         if (err) {
           fs.unlinkSync(filePath);
-          return res
-            .status(500)
-            .json({
-              success: false,
-              message: "Database error",
-              error: err.message,
-            });
+          return res.status(500).json({
+            success: false,
+            message: "Database error",
+            error: err.message,
+          });
         }
 
         const existingRekamMedis = existing.map((r) => r.rekam_medis);
@@ -197,7 +187,7 @@ exports.importPasienCsv = (req, res) => {
           if (
             !row.rekam_medis ||
             !row.nama_pasien ||
-            !["L", "P"].includes(row.jenis_kelamin) ||
+            !["Laki-laki", "Perempuan"].includes(row.jenis_kelamin) ||
             isNaN(Date.parse(row.tgl_lahir))
           ) {
             skipped.push({
@@ -249,12 +239,10 @@ exports.importPasienCsv = (req, res) => {
     })
     .on("error", (err) => {
       fs.unlinkSync(filePath);
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Error parsing CSV",
-          error: err.message,
-        });
+      res.status(500).json({
+        success: false,
+        message: "Error parsing CSV",
+        error: err.message,
+      });
     });
 };
