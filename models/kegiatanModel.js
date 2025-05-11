@@ -1,7 +1,7 @@
 const pool = require("../config/database");
 
 const Kegiatan = {
-  findAll: (pegawai_id, search, page, limit, callback) => {
+  findAll: (pegawai_id, skp_id, search, page, limit, callback) => {
     const offset = (page - 1) * limit;
     let query = `
       SELECT k.id, k.skp_id, k.pegawai_id, k.rekam_medis, k.tgl_kegiatan, s.kegiatan_skp, p.nama_pasien
@@ -11,6 +11,11 @@ const Kegiatan = {
       WHERE k.pegawai_id = ?
     `;
     let queryParams = [pegawai_id];
+
+    if (skp_id) {
+      query += " AND k.skp_id = ?";
+      queryParams.push(skp_id);
+    }
 
     if (search) {
       query +=
@@ -23,24 +28,30 @@ const Kegiatan = {
 
     pool.query(query, queryParams, (err, results) => {
       if (err) return callback(err);
-      pool.query(
-        `
+      let countQuery = `
         SELECT COUNT(*) as total 
         FROM kegiatan k
         JOIN skp s ON k.skp_id = s.id
         JOIN pasien p ON k.rekam_medis = p.rekam_medis
-        WHERE k.pegawai_id = ?` +
-          (search
-            ? " AND (s.kegiatan_skp LIKE ? OR p.nama_pasien LIKE ? OR k.rekam_medis LIKE ?)"
-            : ""),
-        search
-          ? [pegawai_id, `%${search}%`, `%${search}%`, `%${search}%`]
-          : [pegawai_id],
-        (err, countResult) => {
-          if (err) return callback(err);
-          callback(null, { results, total: countResult[0].total });
-        }
-      );
+        WHERE k.pegawai_id = ?
+      `;
+      let countParams = [pegawai_id];
+
+      if (skp_id) {
+        countQuery += " AND k.skp_id = ?";
+        countParams.push(skp_id);
+      }
+
+      if (search) {
+        countQuery +=
+          " AND (s.kegiatan_skp LIKE ? OR p.nama_pasien LIKE ? OR k.rekam_medis LIKE ?)";
+        countParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      }
+
+      pool.query(countQuery, countParams, (err, countResult) => {
+        if (err) return callback(err);
+        callback(null, { results, total: countResult[0].total });
+      });
     });
   },
   checkDuplicate: (skp_id, pegawai_id, rekam_medis, tgl_kegiatan, callback) => {

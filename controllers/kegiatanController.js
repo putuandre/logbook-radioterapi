@@ -2,36 +2,37 @@ const Kegiatan = require("../models/kegiatanModel");
 const pool = require("../config/database"); // Impor pool untuk koneksi database
 
 exports.getAllKegiatan = (req, res) => {
-  const { search = "", page = 1, limit = 10 } = req.query;
+  const { search = "", skp_id = null, page = 1, limit = 10 } = req.query;
   const parsedPage = parseInt(page);
   const parsedLimit = parseInt(limit);
+  const parsedSkpId = skp_id ? parseInt(skp_id) : null;
   const pegawai_id = req.user.id; // Dari JWT
 
   if (
     isNaN(parsedPage) ||
     parsedPage < 1 ||
     isNaN(parsedLimit) ||
-    parsedLimit < 1
+    parsedLimit < 1 ||
+    (parsedSkpId !== null && (isNaN(parsedSkpId) || parsedSkpId < 1))
   ) {
     return res
       .status(400)
-      .json({ success: false, message: "Invalid page or limit" });
+      .json({ success: false, message: "Invalid page, limit, or skp_id" });
   }
 
   Kegiatan.findAll(
     pegawai_id,
+    parsedSkpId,
     search,
     parsedPage,
     parsedLimit,
     (err, { results, total }) => {
       if (err) {
-        return res
-          .status(500)
-          .json({
-            success: false,
-            message: "Database error",
-            error: err.message,
-          });
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+          error: err.message,
+        });
       }
       res.json({
         success: true,
@@ -67,33 +68,27 @@ exports.createKegiatan = (req, res) => {
     kegiatanData.tgl_kegiatan,
     (err, results) => {
       if (err) {
-        return res
-          .status(500)
-          .json({
-            success: false,
-            message: "Database error",
-            error: err.message,
-          });
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+          error: err.message,
+        });
       }
       if (results.length > 0) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-            message:
-              "Kegiatan with same skp_id, rekam_medis, and tgl_kegiatan already exists for this pegawai",
-          });
+        return res.status(409).json({
+          success: false,
+          message:
+            "Kegiatan with same skp_id, rekam_medis, and tgl_kegiatan already exists for this pegawai",
+        });
       }
 
       Kegiatan.create(kegiatanData, (err, result) => {
         if (err) {
-          return res
-            .status(500)
-            .json({
-              success: false,
-              message: "Failed to create kegiatan",
-              error: err.message,
-            });
+          return res.status(500).json({
+            success: false,
+            message: "Failed to create kegiatan",
+            error: err.message,
+          });
         }
         res.status(201).json({
           success: true,
@@ -116,21 +111,17 @@ exports.updateKegiatan = (req, res) => {
     [id, pegawai_id],
     (err, results) => {
       if (err) {
-        return res
-          .status(500)
-          .json({
-            success: false,
-            message: "Database error",
-            error: err.message,
-          });
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+          error: err.message,
+        });
       }
       if (results.length === 0) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-            message: "Kegiatan not found or not authorized",
-          });
+        return res.status(404).json({
+          success: false,
+          message: "Kegiatan not found or not authorized",
+        });
       }
 
       const { skp_id, rekam_medis } = results[0];
@@ -143,41 +134,33 @@ exports.updateKegiatan = (req, res) => {
         tgl_kegiatan,
         (err, results) => {
           if (err) {
-            return res
-              .status(500)
-              .json({
-                success: false,
-                message: "Database error",
-                error: err.message,
-              });
+            return res.status(500).json({
+              success: false,
+              message: "Database error",
+              error: err.message,
+            });
           }
           if (results.length > 0) {
-            return res
-              .status(409)
-              .json({
-                success: false,
-                message:
-                  "Kegiatan with same skp_id, rekam_medis, and tgl_kegiatan already exists for this pegawai",
-              });
+            return res.status(409).json({
+              success: false,
+              message:
+                "Kegiatan with same skp_id, rekam_medis, and tgl_kegiatan already exists for this pegawai",
+            });
           }
 
           Kegiatan.update(id, pegawai_id, tgl_kegiatan, (err, result) => {
             if (err) {
-              return res
-                .status(500)
-                .json({
-                  success: false,
-                  message: "Failed to update kegiatan",
-                  error: err.message,
-                });
+              return res.status(500).json({
+                success: false,
+                message: "Failed to update kegiatan",
+                error: err.message,
+              });
             }
             if (result.affectedRows === 0) {
-              return res
-                .status(404)
-                .json({
-                  success: false,
-                  message: "Kegiatan not found or not authorized",
-                });
+              return res.status(404).json({
+                success: false,
+                message: "Kegiatan not found or not authorized",
+              });
             }
             res.json({
               success: true,
@@ -197,21 +180,17 @@ exports.deleteKegiatan = (req, res) => {
 
   Kegiatan.delete(id, pegawai_id, (err, result) => {
     if (err) {
-      return res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to delete kegiatan",
-          error: err.message,
-        });
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete kegiatan",
+        error: err.message,
+      });
     }
     if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message: "Kegiatan not found or not authorized",
-        });
+      return res.status(404).json({
+        success: false,
+        message: "Kegiatan not found or not authorized",
+      });
     }
     res.json({
       success: true,
