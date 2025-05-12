@@ -300,8 +300,7 @@ exports.generateLaporanLogbook = async (req, res) => {
             font-weight: bold;
         }
         th:nth-child(1), td:nth-child(1) { width: 5%; }
-        th:nth-child(2), td:nth-child(2) { width: 20%; }
-        th:nth-child(n+3), td:nth-child(n+3) { width: 5.83%; }
+        th:nth-child(n+3), td:nth-child(n+3) { width: 6.5%; }
         td:nth-child(2) { text-align: left; }
         .total-row {
             font-weight: bold;
@@ -436,7 +435,7 @@ exports.generateLaporanLogbook = async (req, res) => {
         } dari bulan ${htmlData.periode_start} sampai dengan ${
       htmlData.periode_end
     } adalah ${htmlData.jumlah_kunjungan}.</p>
-        <p style="text-align: justify;">Demikian Rekap Kegiatan Profesional/Logbook ini kami buat dengan sebenar-benarnya, apabila dari Penelusuran Kemenkes melalui Tim Verifikator terbukti ditemukan ketidaksesuaian data laporan pelayanan keprofesian yang disengaja, maka kami Bersedia capaian SKP selama periode aktif 5 tahun terakhir yang sudah terkumpul dilakukan Penghapusan atau menjadi 0 (nol) SKP (Sesuai Kepmenkes No HK.01.07/MENKES/1561/2024 tentang Pedoman Pengelolaan Pemenuhan Kecukupan SKP Bagi Named & Nakes).</p>
+        <p style="text-align: justify;">Demikian Rekap Kegiatan Profesional/Logbook ini kami buat dengan sebenar-benarnya, apabila dari Penelusuran Kemenkes melalui Tim Verifikator terbukti ditemukan <b>ketidaksesuaian data laporan pelayanan keprofesian</b> yang disengaja, maka kami <b>Bersedia capaian SKP selama periode aktif 5 tahun terakhir yang sudah terkumpul dilakukan Penghapusan atau menjadi 0 (nol) SKP</b> (Sesuai Kepmenkes No HK.01.07/MENKES/1561/2024 tentang Pedoman Pengelolaan Pemenuhan Kecukupan SKP Bagi Named & Nakes).</p>
     </div>
     <table class="signature-table">
         <tr>
