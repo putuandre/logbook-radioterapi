@@ -104,10 +104,10 @@ exports.validateUpdatePegawai = (req, res, next) => {
       message: "Invalid email format",
     });
   }
-  if (!["admin", "user"].includes(role)) {
+  if (!["admin", "radiografer", "root"].includes(role)) {
     return res.status(400).json({
       success: false,
-      message: "Role must be 'admin' or 'user'",
+      message: "Role must be 'admin' or 'radiografer' or 'root'",
     });
   }
   if (typeof active !== "number" || ![0, 1].includes(active)) {

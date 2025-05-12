@@ -174,6 +174,25 @@ exports.updateKegiatan = (req, res) => {
   );
 };
 
+exports.getKegiatanCountBySkp = (req, res) => {
+  const pegawai_id = req.user.id; // Dari JWT
+
+  Kegiatan.countBySkpForCurrentMonth(pegawai_id, (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+        error: err.message,
+      });
+    }
+    res.json({
+      success: true,
+      data: results,
+      message: "Kegiatan count by SKP retrieved successfully",
+    });
+  });
+};
+
 exports.deleteKegiatan = (req, res) => {
   const { id } = req.params;
   const pegawai_id = req.user.id; // Dari JWT

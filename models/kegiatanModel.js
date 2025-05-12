@@ -85,6 +85,23 @@ const Kegiatan = {
     `;
     pool.query(query, [tgl_kegiatan, id, pegawai_id], callback);
   },
+  countBySkpForCurrentMonth: (pegawai_id, callback) => {
+    const query = `
+      SELECT s.id AS skp_id, s.kegiatan_skp, COUNT(k.id) AS jumlah
+      FROM kegiatan k
+      JOIN skp s ON k.skp_id = s.id
+      WHERE k.pegawai_id = ?
+        AND s.active = 1
+        AND YEAR(k.tgl_kegiatan) = YEAR(CURDATE())
+        AND MONTH(k.tgl_kegiatan) = MONTH(CURDATE())
+      GROUP BY s.id, s.kegiatan_skp
+      ORDER BY s.kegiatan_skp ASC
+    `;
+    pool.query(query, [pegawai_id], (err, results) => {
+      if (err) return callback(err);
+      callback(null, results);
+    });
+  },
   delete: (id, pegawai_id, callback) => {
     pool.query(
       "DELETE FROM kegiatan WHERE id = ? AND pegawai_id = ?",

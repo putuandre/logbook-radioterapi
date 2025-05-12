@@ -5,6 +5,11 @@ const authMiddleware = require("../middleware/authMiddleware");
 const validateMiddleware = require("../middleware/validateMiddleware");
 
 router.get("/", authMiddleware.verifyToken, kegiatanController.getAllKegiatan);
+router.get(
+  "/count-by-skp",
+  authMiddleware.verifyToken,
+  kegiatanController.getKegiatanCountBySkp
+);
 router.post(
   "/",
   authMiddleware.verifyToken,
