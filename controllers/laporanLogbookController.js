@@ -256,7 +256,7 @@ exports.generateLaporanLogbook = async (req, res) => {
             line-height: 1.1;
         }
         .header-img {
-            width: 65%;
+            width: 100%;
             display: block;
             margin: 0 auto;
             margin-bottom: 10px;
@@ -317,22 +317,19 @@ exports.generateLaporanLogbook = async (req, res) => {
         }
         .signature-table td {
             border: none;
-            padding: 5px;
+            width: 50%;
             text-align: center;
             vertical-align: top;
         }
-        .signature-table .colspan-2 {
-            width: 50%;
-        }
         .signature-table .signature-space {
-            height: 100px;
+            padding-bottom: 100px;
         }
     </style>
 </head>
 <body>
     <img src="${
       htmlData.base_url
-    }/Uploads/assets/kop_surat.jpg" class="header-img" alt="Kop Surat">
+    }/Uploads/assets/kop_surat_landscape.png" class="header-img" alt="Kop Surat">
     <div class="title">
         LOGBOOK INDIVIDU<br>
         RANAH PELAYANAN TINGKAT ${htmlData.tingkat_kegiatan}<br>
@@ -435,7 +432,7 @@ exports.generateLaporanLogbook = async (req, res) => {
         } dari bulan ${htmlData.periode_start} sampai dengan ${
       htmlData.periode_end
     } adalah ${htmlData.jumlah_kunjungan}.</p>
-        <p style="text-align: justify;">Demikian Rekap Kegiatan Profesional/Logbook ini kami buat dengan sebenar-benarnya, apabila dari Penelusuran Kemenkes melalui Tim Verifikator terbukti ditemukan <b>ketidaksesuaian data laporan pelayanan keprofesian</b> yang disengaja, maka kami <b>Bersedia capaian SKP selama periode aktif 5 tahun terakhir yang sudah terkumpul dilakukan Penghapusan atau menjadi 0 (nol) SKP</b> (Sesuai Kepmenkes No HK.01.07/MENKES/1561/2024 tentang Pedoman Pengelolaan Pemenuhan Kecukupan SKP Bagi Named & Nakes).</p>
+        <p style="text-align: justify; line-height:1.5">Demikian Rekap Kegiatan Profesional/Logbook ini kami buat dengan sebenar-benarnya, apabila dari Penelusuran Kemenkes melalui Tim Verifikator terbukti ditemukan <b>ketidaksesuaian data laporan pelayanan keprofesian</b> yang disengaja, maka kami <b>Bersedia capaian SKP selama periode aktif 5 tahun terakhir yang sudah terkumpul dilakukan Penghapusan atau menjadi 0 (nol) SKP</b> (Sesuai Kepmenkes No HK.01.07/MENKES/1561/2024 tentang Pedoman Pengelolaan Pemenuhan Kecukupan SKP Bagi Named & Nakes).</p>
     </div>
     <table class="signature-table">
         <tr>
@@ -447,14 +444,12 @@ exports.generateLaporanLogbook = async (req, res) => {
             <td></td>
         </tr>
         <tr>
-            <td class="colspan-2 signature-space">${htmlData.karu_jabatan}</td>
-            <td class="colspan-2 signature-space">${
-              htmlData.pegawai_jabatan
-            }</td>
+            <td class="signature-space">${htmlData.karu_jabatan}</td>
+            <td class="signature-space">${htmlData.pegawai_jabatan}</td>
         </tr>
         <tr>
-            <td class="colspan-2 signature-space">${htmlData.karu_nama}</td>
-            <td class="colspan-2 signature-space">${htmlData.pegawai_nama}</td>
+            <td ><b>${htmlData.pegawai_nama}</b></td>
+            <td ><b>${htmlData.karu_nama}</b></td>
         </tr>
         <tr>
             <td colspan="2">Menyetujui</td>
@@ -465,12 +460,10 @@ exports.generateLaporanLogbook = async (req, res) => {
             }</td>
         </tr>
         <tr>
-            <td colspan="2" class="signature-space">${
-              htmlData.ka_instalasi_nama
-            }</td>
+            <td colspan="2" ><b>${htmlData.ka_instalasi_nama}</b></td>
         </tr>
         <tr>
-            <td colspan="2">${htmlData.ka_instalasi_sip}</td>
+            <td colspan="2">No. SIP ${htmlData.ka_instalasi_sip}</td>
         </tr>
     </table>
 </body>
