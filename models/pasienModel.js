@@ -11,7 +11,7 @@ const Pasien = {
       queryParams.push(`%${search}%`, `%${search}%`);
     }
 
-    query += " LIMIT ? OFFSET ?";
+    query += " ORDER BY id DESC LIMIT ? OFFSET ?";
     queryParams.push(limit, offset);
 
     pool.query(query, queryParams, (err, results) => {
