@@ -11,6 +11,10 @@ const kaInstalasiRoutes = require("./routes/kaInstalasiRoutes");
 const laporanSkpRoutes = require("./routes/laporanSkpRoutes");
 const laporanLogbookRoutes = require("./routes/laporanLogbookRoutes");
 const pegawaiRoutes = require("./routes/pegawaiRoutes");
+const dokterDpjpRoutes = require("./routes/dokterDpjpRoutes");
+const fiksasiRoutes = require("./routes/fiksasiRoutes");
+const planningRoutes = require("./routes/planningRoutes");
+const jadwalRoutes = require("./routes/jadwalRoutes");
 require("dotenv").config();
 
 const app = express();
@@ -38,6 +42,10 @@ app.use("/api/ka-instalasi", kaInstalasiRoutes);
 app.use("/api/laporan-skp", laporanSkpRoutes);
 app.use("/api/laporan-logbook", laporanLogbookRoutes);
 app.use("/api/pegawai", pegawaiRoutes);
+app.use("/api/dokter-dpjp", dokterDpjpRoutes);
+app.use("/api/fiksasi", fiksasiRoutes);
+app.use("/api/planning", planningRoutes);
+app.use("/api/jadwal", jadwalRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

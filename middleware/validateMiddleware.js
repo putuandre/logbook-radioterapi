@@ -291,3 +291,97 @@ exports.validateKaInstalasi = (req, res, next) => {
   }
   next();
 };
+
+exports.validateDokterDpjp = (req, res, next) => {
+  const { nama, active } = req.body;
+  if (!nama) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Nama is required" });
+  }
+  if (active !== undefined && ![0, 1].includes(parseInt(active))) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Active must be 0 or 1" });
+  }
+  next();
+};
+
+exports.validateFiksasi = (req, res, next) => {
+  const { nama } = req.body;
+  if (!nama) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Nama is required" });
+  }
+  next();
+};
+
+exports.validatePlanning = (req, res, next) => {
+  const { rekam_medis, dokter_dpjp_id, fiksasi_id, fraksi, active } = req.body;
+  if (!rekam_medis || !dokter_dpjp_id || !fiksasi_id || !fraksi) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Rekam medis, dokter_dpjp_id, fiksasi_id, and fraksi are required",
+    });
+  }
+  if (isNaN(fraksi) || fraksi < 1) {
+    return res.status(400).json({
+      success: false,
+      message: "Fraksi must be a positive number",
+    });
+  }
+  if (active !== undefined && ![0, 1].includes(parseInt(active))) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Active must be 0 or 1" });
+  }
+  next();
+};
+
+exports.validateJadwal = (req, res, next) => {
+  const { rekam_medis, jadwal_date, jadwal_time } = req.body;
+  if (!rekam_medis || !jadwal_date || !jadwal_time) {
+    return res.status(400).json({
+      success: false,
+      message: "Rekam medis, jadwal_date, and jadwal_time are required",
+    });
+  }
+  if (isNaN(Date.parse(jadwal_date))) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid jadwal_date format",
+    });
+  }
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(jadwal_time)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid jadwal_time format (use HH:MM or HH:MM:SS)",
+    });
+  }
+  next();
+};
+
+exports.validateEditJadwal = (req, res, next) => {
+  const { jadwal_date, jadwal_time } = req.body;
+  if (!jadwal_date || !jadwal_time) {
+    return res.status(400).json({
+      success: false,
+      message: "Jadwal_date and jadwal_time are required",
+    });
+  }
+  if (isNaN(Date.parse(jadwal_date))) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid jadwal_date format",
+    });
+  }
+  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(jadwal_time)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid jadwal_time format (use HH:MM or HH:MM:SS)",
+    });
+  }
+  next();
+};
