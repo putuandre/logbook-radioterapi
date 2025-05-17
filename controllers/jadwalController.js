@@ -1,6 +1,7 @@
 const Jadwal = require("../models/jadwalModel");
 const { parse } = require("csv-parse");
 const fs = require("fs");
+const ExcelJS = require("exceljs");
 
 exports.createJadwal = (req, res) => {
   const { rekam_medis, jadwal_date, jadwal_time } = req.body;
@@ -445,4 +446,79 @@ exports.deleteJadwal = (req, res) => {
       message: "Jadwal deleted successfully",
     });
   });
+};
+
+exports.exportPlanningExcel = async (req, res) => {
+  try {
+    // Fetch data
+    const results = await new Promise((resolve, reject) => {
+      Jadwal.findPlanningForExport((err, data) => {
+        if (err) reject(err);
+        else resolve(data);
+      });
+    });
+
+    // Create workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Planning Active");
+
+    // Define columns
+    worksheet.columns = [
+      { header: "No", key: "no", width: 5 },
+      { header: "Rekam Medis", key: "rekam_medis", width: 15 },
+      { header: "Nama Pasien", key: "nama_pasien", width: 20 },
+      { header: "Diagnosa", key: "diagnosa", width: 30 },
+      { header: "Nama Fiksasi", key: "nama_fiksasi", width: 20 },
+      { header: "Nama Dokter DPJP", key: "nama_dokter_dpjp", width: 20 },
+      { header: "Fraksi (Active)", key: "fraksi_active", width: 15 },
+      { header: "Sisa Fraksi", key: "sisa_fraksi", width: 15 },
+    ];
+
+    // Add rows
+    results.forEach((row, index) => {
+      worksheet.addRow({
+        no: index + 1,
+        rekam_medis: row.rekam_medis,
+        nama_pasien: row.nama_pasien,
+        diagnosa: row.diagnosa,
+        nama_fiksasi: row.nama_fiksasi,
+        nama_dokter_dpjp: row.nama_dokter_dpjp,
+        fraksi_active: row.fraksi_active,
+        sisa_fraksi: row.sisa_fraksi,
+      });
+    });
+
+    // Style header
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).alignment = {
+      vertical: "middle",
+      horizontal: "center",
+    };
+    worksheet.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "D3D3D3" },
+    };
+
+    // Generate file
+    const timestamp = new Date()
+      .toISOString()
+      .replace(/[-:T.]/g, "")
+      .slice(0, 14);
+    const fileName = `planning_export_${timestamp}.xlsx`;
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename=${fileName}`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to export Excel",
+      error: err.message,
+    });
+  }
 };

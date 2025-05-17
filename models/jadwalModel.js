@@ -121,6 +121,43 @@ const Jadwal = {
     const query = "SELECT rekam_medis FROM jadwal WHERE id = ?";
     pool.query(query, [id], callback);
   },
+
+  findPlanningForExport: (callback) => {
+    const query = `
+      SELECT 
+        p.rekam_medis,
+        ps.nama_pasien,
+        ps.diagnosa,
+        f.nama AS nama_fiksasi,
+        d.nama AS nama_dokter_dpjp,
+        p.fraksi AS fraksi_active,
+        COALESCE((
+          SELECT SUM(p2.fraksi)
+          FROM planning p2
+          WHERE p2.rekam_medis = p.rekam_medis
+        ), 0) - COALESCE((
+          SELECT COUNT(*)
+          FROM jadwal j
+          WHERE j.rekam_medis = p.rekam_medis
+        ), 0) AS sisa_fraksi,
+        MAX(j.jadwal_date) AS latest_jadwal_date,
+        (SELECT j2.jadwal_time 
+         FROM jadwal j2 
+         WHERE j2.rekam_medis = p.rekam_medis 
+         AND j2.jadwal_date = MAX(j.jadwal_date)
+         ORDER BY j2.jadwal_time DESC 
+         LIMIT 1) AS latest_jadwal_time
+      FROM planning p
+      JOIN pasien ps ON p.rekam_medis = ps.rekam_medis
+      JOIN fiksasi f ON p.fiksasi_id = f.id
+      JOIN dokter_dpjp d ON p.dokter_dpjp_id = d.id
+      LEFT JOIN jadwal j ON p.rekam_medis = j.rekam_medis
+      WHERE p.active = 1
+      GROUP BY p.rekam_medis, ps.nama_pasien, ps.diagnosa, f.nama, d.nama, p.fraksi
+      ORDER BY latest_jadwal_date ASC, latest_jadwal_time ASC
+    `;
+    pool.query(query, [], callback);
+  },
 };
 
 module.exports = Jadwal;

@@ -32,5 +32,10 @@ router.delete(
   authMiddleware.verifyToken,
   jadwalController.deleteJadwal
 );
+router.get(
+  "/export",
+  authMiddleware.verifyToken,
+  jadwalController.exportPlanningExcel
+);
 
 module.exports = router;
