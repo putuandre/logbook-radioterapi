@@ -1,5 +1,7 @@
 const Kegiatan = require("../models/kegiatanModel");
-const pool = require("../config/database"); // Impor pool untuk koneksi database
+const pool = require("../config/database");
+const csvParse = require("csv-parse");
+const { Readable } = require("stream");
 
 exports.getAllKegiatan = (req, res) => {
   const { search = "", skp_id = null, page = 1, limit = 10 } = req.query;
@@ -98,6 +100,134 @@ exports.createKegiatan = (req, res) => {
       });
     }
   );
+};
+
+exports.importCsv = async (req, res) => {
+  if (!req.file || !req.body.skp_id) {
+    return res.status(400).json({
+      success: false,
+      message: "CSV file and skp_id are required",
+    });
+  }
+
+  const pegawai_id = req.user.id;
+  const skp_id = parseInt(req.body.skp_id);
+  if (isNaN(skp_id) || skp_id < 1) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid skp_id",
+    });
+  }
+
+  const results = [];
+  const errors = [];
+  let processedCount = 0;
+  let skippedCount = 0;
+
+  try {
+    const parser = csvParse.parse({
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
+
+    const stream = Readable.from(req.file.buffer.toString());
+
+    for await (const record of stream.pipe(parser)) {
+      const { tgl_kegiatan, rekam_medis } = record;
+
+      // Validate record
+      if (!tgl_kegiatan || !rekam_medis) {
+        errors.push({
+          row: processedCount + 1,
+          message: "Missing tgl_kegiatan or rekam_medis",
+        });
+        processedCount++;
+        continue;
+      }
+
+      if (isNaN(Date.parse(tgl_kegiatan))) {
+        errors.push({
+          row: processedCount + 1,
+          message: "Invalid tgl_kegiatan format",
+        });
+        processedCount++;
+        continue;
+      }
+
+      // Check for duplicates
+      const duplicateCheck = await new Promise((resolve) => {
+        Kegiatan.checkDuplicate(
+          skp_id,
+          pegawai_id,
+          rekam_medis,
+          tgl_kegiatan,
+          (err, results) => {
+            if (err) {
+              errors.push({
+                row: processedCount + 1,
+                message: "Database error checking duplicates",
+                error: err.message,
+              });
+              resolve(true);
+            } else {
+              resolve(results.length > 0);
+            }
+          }
+        );
+      });
+
+      if (duplicateCheck) {
+        skippedCount++;
+        processedCount++;
+        continue;
+      }
+
+      // Insert valid record
+      const insertResult = await new Promise((resolve) => {
+        Kegiatan.create(
+          {
+            skp_id,
+            pegawai_id,
+            rekam_medis,
+            tgl_kegiatan,
+          },
+          (err, result) => {
+            if (err) {
+              errors.push({
+                row: processedCount + 1,
+                message: "Failed to insert record",
+                error: err.message,
+              });
+              resolve(false);
+            } else {
+              results.push({ id: result.insertId });
+              resolve(true);
+            }
+          }
+        );
+      });
+
+      processedCount++;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        inserted: results.length,
+        skipped: skippedCount,
+        total_processed: processedCount,
+        errors,
+      },
+      message: "CSV import completed",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error processing CSV file",
+      error: error.message,
+    });
+  }
 };
 
 exports.updateKegiatan = (req, res) => {

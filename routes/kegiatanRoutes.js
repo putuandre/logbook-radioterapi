@@ -3,6 +3,9 @@ const router = express.Router();
 const kegiatanController = require("../controllers/kegiatanController");
 const authMiddleware = require("../middleware/authMiddleware");
 const validateMiddleware = require("../middleware/validateMiddleware");
+const multer = require("multer");
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.get("/", authMiddleware.verifyToken, kegiatanController.getAllKegiatan);
 router.get(
@@ -15,6 +18,13 @@ router.post(
   authMiddleware.verifyToken,
   validateMiddleware.validateKegiatan,
   kegiatanController.createKegiatan
+);
+router.post(
+  "/import",
+  authMiddleware.verifyToken,
+  upload.single("file"),
+  validateMiddleware.validateCsvUpload,
+  kegiatanController.importCsv
 );
 router.put(
   "/:id",
