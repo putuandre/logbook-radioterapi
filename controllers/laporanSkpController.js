@@ -1,259 +1,352 @@
 const pool = require("../config/database");
-const puppeteer = require("puppeteer");
+const pdf = require("html-pdf");
 const Karu = require("../models/karuModel");
 
-exports.generateLaporanSkp = async (req, res) => {
-  const { start_date, end_date, tanggal_ttd, skp, karu } = req.query;
-  const pegawai_id = req.user.id; // Dari JWT
+// Format tanggal ke dalam format Indonesia (e.g., "31 Mei 2025")
+const formatTanggalIndonesia = (tanggal) => {
+  const options = { day: "numeric", month: "long", year: "numeric" };
+  return new Intl.DateTimeFormat("id-ID", options).format(new Date(tanggal));
+};
 
-  // Validasi query parameter
+// Validasi parameter query
+const validateQueryParams = ({
+  start_date,
+  end_date,
+  tanggal_ttd,
+  skp,
+  karu,
+}) => {
   if (!start_date || !end_date || !tanggal_ttd || !skp || !karu) {
-    return res
-      .status(400)
-      .json({ success: false, message: "All query parameters are required" });
+    return {
+      valid: false,
+      message:
+        "All query parameters (start_date, end_date, tanggal_ttd, skp, karu) are required",
+    };
   }
   if (
     isNaN(Date.parse(start_date)) ||
     isNaN(Date.parse(end_date)) ||
     isNaN(Date.parse(tanggal_ttd))
   ) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Invalid date format" });
+    return {
+      valid: false,
+      message: "Invalid date format for start_date, end_date, or tanggal_ttd",
+    };
   }
   if (isNaN(skp) || isNaN(karu)) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Skp and karu must be numbers" });
+    return { valid: false, message: "skp and karu must be numeric values" };
+  }
+  return { valid: true };
+};
+
+// Ambil data dari database
+const fetchData = async (pegawai_id, skp, start_date, end_date, karu) => {
+  // Ambil data pegawai
+  const [pegawai] = await pool
+    .promise()
+    .query("SELECT nama_pegawai, nip, jabatan FROM pegawai WHERE id = ?", [
+      pegawai_id,
+    ]);
+  if (pegawai.length === 0) {
+    throw new Error("Pegawai not found");
   }
 
-  try {
-    // Ambil data pegawai
-    const [pegawai] = await pool
-      .promise()
-      .query("SELECT nama_pegawai, nip, jabatan FROM pegawai WHERE id = ?", [
-        pegawai_id,
-      ]);
-    if (pegawai.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Pegawai not found" });
-    }
-
-    // Ambil data karu menggunakan karuModel
-    const karuData = await new Promise((resolve, reject) => {
-      Karu.findById(karu, (err, results) => {
-        if (err) return reject(err);
-        if (results.length === 0) return reject(new Error("Karu not found"));
-        resolve(results[0]);
-      });
+  // Ambil data karu
+  const karuData = await new Promise((resolve, reject) => {
+    Karu.findById(karu, (err, results) => {
+      if (err) return reject(err);
+      if (results.length === 0) return reject(new Error("Karu not found"));
+      resolve(results[0]);
     });
+  });
 
-    // Ambil data kegiatan dengan DATE_FORMAT untuk tgl_kegiatan
-    const [kegiatan] = await pool.promise().query(
-      `
-      SELECT DATE_FORMAT(k.tgl_kegiatan, '%Y-%m-%d') AS tgl_kegiatan, k.rekam_medis, p.nama_pasien, p.diagnosa, s.kegiatan_skp
-      FROM kegiatan k
-      JOIN skp s ON k.skp_id = s.id
-      JOIN pasien p ON k.rekam_medis = p.rekam_medis
-      WHERE k.pegawai_id = ? AND k.skp_id = ? AND k.tgl_kegiatan BETWEEN ? AND ?
-      `,
-      [pegawai_id, skp, start_date, end_date]
-    );
+  // Ambil data kegiatan
+  const [kegiatan] = await pool.promise().query(
+    `
+    SELECT DATE_FORMAT(k.tgl_kegiatan, '%Y-%m-%d') AS tgl_kegiatan,
+           k.rekam_medis,
+           p.nama_pasien,
+           p.diagnosa,
+           s.kegiatan_skp
+    FROM kegiatan k
+    JOIN skp s ON k.skp_id = s.id
+    JOIN pasien p ON k.rekam_medis = p.rekam_medis
+    WHERE k.pegawai_id = ? AND k.skp_id = ? AND k.tgl_kegiatan BETWEEN ? AND ?
+    `,
+    [pegawai_id, skp, start_date, end_date]
+  );
+  if (kegiatan.length === 0) {
+    throw new Error("No kegiatan found for the specified filters");
+  }
 
-    if (kegiatan.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No kegiatan found for the given filters",
-      });
-    }
+  return { pegawai: pegawai[0], karuData, kegiatan };
+};
 
-    // Format data untuk HTML
-    const tableData = kegiatan.map((row, index) => ({
-      no: index + 1,
-      tanggal: row.tgl_kegiatan,
-      rekam_medis: row.rekam_medis,
-      nama_pasien: row.nama_pasien,
-      diagnosa: row.diagnosa || "-",
-    }));
+// Fungsi untuk membuat inisial dari nama pasien
+const getInitials = (nama) => {
+  if (!nama) return "-";
+  return nama
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
+};
 
-    // Format tanggal_ttd ke format Indonesia
-    const date = new Date(tanggal_ttd);
-    const options = { day: "numeric", month: "long", year: "numeric" };
-    const tanggal_ttd_formatted = date.toLocaleDateString("id-ID", options);
+// Format data untuk template HTML
+const prepareTemplateData = (data, tanggal_ttd, baseUrl) => {
+  const { pegawai, karuData, kegiatan } = data;
+  const tableData = kegiatan.map((row, index) => ({
+    no: index + 1,
+    tanggal: formatTanggalIndonesia(row.tgl_kegiatan),
+    rekam_medis: row.rekam_medis,
+    nama_pasien: getInitials(row.nama_pasien), // Mengubah nama pasien menjadi inisial
+    diagnosa: row.diagnosa || "-",
+  }));
 
-    // Format bulan dan tahun dari end_date untuk nama file
-    const endDate = new Date(end_date);
-    const bulanTahun = endDate.toLocaleDateString("id-ID", {
-      month: "long",
-      year: "numeric",
-    });
+  // Format bulan dan tahun untuk nama file
+  const endDate = new Date(data.kegiatan[0].end_date);
+  const bulanTahun = endDate.toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric",
+  });
 
-    // Buat base URL dinamis
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+  // Nama file dinamis
+  const safeKegiatanSkp = kegiatan[0].kegiatan_skp
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .trim();
+  const fileName = `Logbook ${safeKegiatanSkp} ${bulanTahun}.pdf`;
 
-    // Data untuk template HTML
-    const htmlData = {
-      base_url: baseUrl,
-      kegiatan_skp: kegiatan[0].kegiatan_skp.toUpperCase(),
-      nama_pegawai: pegawai[0].nama_pegawai,
-      nip: pegawai[0].nip,
-      jabatan: pegawai[0].jabatan,
-      table_data: tableData,
-      tanggal_ttd_formatted,
-      karu_jabatan: karuData.jabatan,
-      karu_ttd: karuData.ttd,
-      karu_nama: karuData.nama,
-      karu_nip: karuData.nip,
-    };
+  return {
+    base_url: baseUrl,
+    kegiatan_skp: kegiatan[0].kegiatan_skp.toUpperCase(),
+    nama_pegawai: pegawai.nama_pegawai,
+    nip: pegawai.nip,
+    jabatan: pegawai.jabatan,
+    table_data: tableData,
+    tanggal_ttd_formatted: formatTanggalIndonesia(tanggal_ttd),
+    karu_jabatan: karuData.jabatan,
+    karu_ttd: karuData.ttd,
+    karu_nama: karuData.nama,
+    karu_nip: karuData.nip,
+    fileName,
+  };
+};
 
-    // Load template HTML
-    let html = `<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Laporan SKP</title>
-    <style>
+// Generate template HTML
+const generateHtmlTemplate = (data) => {
+  return `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8">
+      <title>Laporan SKP</title>
+      <style>
         @page {
-            size: A4;
-            margin: 1cm;
+          size: A4;
+          margin: 1cm;
         }
         body {
-            font-family: Arial, sans-serif;
-            font-size: 11pt;
-            line-height: 1;
+          font-family: Arial, sans-serif;
+          font-size: 10pt;
+          line-height: 1.1;
         }
         .header-img {
-            width: 100%;
-            margin-bottom: 10px;
+          width: 100%;
+          margin-bottom: 10px;
         }
         .title {
-            text-align: center;
-            font-size: 14pt;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-transform: uppercase;
+          text-align: center;
+          font-size: 11pt;
+          font-weight: bold;
+          margin-bottom: 20px;
+          text-transform: uppercase;
         }
         .info {
-            margin-bottom: 20px;
-            line-height: 0.3;
+          margin-bottom: 20px;
         }
-        .info p {
-            display: flex;
-            align-items: flex-start;
+        .info-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 10pt;
+          line-height: 1.1;
         }
-        .info-label {
-            flex: 0 0 120px;
-            text-align: left;
-        }
-        .info-value {
-            flex: 1;
+        .info-table td {
+          border: none;
+          padding: 2px 0;
+          text-align: left;
+          font-size: 10pt
         }
         table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 20px;
         }
         th, td {
-            border: 1px solid black;
-            padding: 4px;
-            text-align: left;
+          border: 1px solid black;
+          padding: 2px;
+          text-align: center;
+          font-size: 9pt;
+          line-height: 1.1;
         }
         th {
-            background-color: #f2f2f2;
-            font-weight: bold;
+          background-color: #f2f2f2;
+          font-weight: bold;
         }
         .signature {
-            text-align: right;
-            margin-top: 20px;
-            line-height: 0.3;
+          text-align: right;
+          margin-top: 20px;
+        }
+        .signature p {
+          margin: 4px 0;
+          font-size: 10pt;
+          line-height: 1.1;
         }
         .signature img {
-            height: 65px;
-            margin: 0px 0;
+          width: 100px;
+          height: auto;
+          margin: 0;
         }
-    </style>
-</head>
-<body>
-    <img src="${
-      htmlData.base_url
-    }/Uploads/assets/kop_surat.jpg" class="header-img" alt="Kop Surat">
-    <div class="title">
+      </style>
+    </head>
+    <body>
+      <img src="${
+        data.base_url
+      }/Uploads/assets/kop_surat.jpg" class="header-img" alt="Kop Surat">
+      <div class="title">
         LOGBOOK KEGIATAN RADIOGRAFER<br>
-        ${htmlData.kegiatan_skp}
-    </div>
-    <div class="info">
-        <p><span class="info-label">Nama Pegawai</span><span class="info-value">: ${
-          htmlData.nama_pegawai
-        }</span></p>
-        <p><span class="info-label">NIP</span><span class="info-value">: ${
-          htmlData.nip
-        }</span></p>
-        <p><span class="info-label">Jabatan</span><span class="info-value">: ${
-          htmlData.jabatan
-        }</span></p>
-    </div>
-    <table>
+        ${data.kegiatan_skp}
+      </div>
+      <div class="info">
+        <table class="info-table">
+          <tr>
+            <td>Nama Pegawai</td>
+            <td>: ${data.nama_pegawai}</td>
+          </tr>
+          <tr>
+            <td>NIP</td>
+            <td>: ${data.nip}</td>
+          </tr>
+          <tr>
+            <td>Jabatan</td>
+            <td>: ${data.jabatan}</td>
+          </tr>
+        </table>
+      </div>
+      <table>
         <thead>
-            <tr>
-                <th>No</th>
-                <th>Tanggal</th>
-                <th>Rekam Medis</th>
-                <th>Nama Pasien</th>
-                <th>Diagnosa</th>
-            </tr>
+          <tr>
+            <th>No</th>
+            <th>Tanggal</th>
+            <th>Rekam Medis</th>
+            <th>Nama Pasien</th>
+            <th>Diagnosa</th>
+          </tr>
         </thead>
         <tbody>
-            ${htmlData.table_data
-              .map(
-                (row) => `
-                <tr>
-                    <td>${row.no}</td>
-                    <td>${row.tanggal}</td>
-                    <td>${row.rekam_medis}</td>
-                    <td>${row.nama_pasien}</td>
-                    <td>${row.diagnosa}</td>
-                </tr>
+          ${data.table_data
+            .map(
+              (row) => `
+              <tr>
+                <td>${row.no}</td>
+                <td>${row.tanggal}</td>
+                <td>${row.rekam_medis}</td>
+                <td>${row.nama_pasien}</td>
+                <td>${row.diagnosa}</td>
+              </tr>
             `
-              )
-              .join("")}
+            )
+            .join("")}
         </tbody>
-    </table>
-    <div class="signature">
-        <p>Denpasar, ${htmlData.tanggal_ttd_formatted}</p>
-        <p>${htmlData.karu_jabatan}</p>
-        <img src="${htmlData.base_url}${htmlData.karu_ttd}" alt="Tanda Tangan">
-        <p>${htmlData.karu_nama}</p>
-        <p>NIP. ${htmlData.karu_nip}</p>
-    </div>
-</body>
-</html>`;
+      </table>
+      <div class="signature">
+        <p>Denpasar, ${data.tanggal_ttd_formatted}</p>
+        <p>${data.karu_jabatan}</p>
+        <img src="${data.base_url}${
+    data.karu_ttd
+  }" alt="Tanda Tangan" class="signature-img">
+        <p>${data.karu_nama}</p>
+        <p>NIP. ${data.karu_nip}</p>
+      </div>
+    </body>
+    </html>
+  `;
+};
 
-    // Buat nama file dinamis: Logbook <kegiatan_skp> <bulan> <tahun>.pdf
-    const safeKegiatanSkp = htmlData.kegiatan_skp
-      .replace(/[^a-zA-Z0-9 ]/g, "")
-      .trim();
-    const fileName = `Logbook ${safeKegiatanSkp} ${bulanTahun}.pdf`;
+// Generate PDF
+const generatePdf = (html, fileName, res) => {
+  const options = {
+    format: "Legal",
+    orientation: "portrait",
+    border: {
+      top: "1cm",
+      bottom: "1cm",
+      left: "1cm",
+      right: "1cm",
+    },
+    type: "pdf",
+  };
 
-    // Render PDF dengan Puppeteer
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "2cm", bottom: "2cm", left: "2cm", right: "2cm" },
-    });
-    await browser.close();
+  pdf.create(html, options).toBuffer((err, buffer) => {
+    if (err) {
+      console.error("Error generating PDF:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to generate PDF",
+        error: err.message,
+      });
+    }
 
-    // Kirim PDF sebagai respon dengan nama file dinamis
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-    res.status(200).send(pdfBuffer);
+    res.status(200).send(buffer);
+  });
+};
+
+// Controller utama untuk menghasilkan laporan SKP
+exports.generateLaporanSkp = async (req, res) => {
+  const { start_date, end_date, tanggal_ttd, skp, karu } = req.query;
+  const pegawai_id = req.user.id; // Dari JWT
+
+  try {
+    // Validasi parameter
+    const validation = validateQueryParams({
+      start_date,
+      end_date,
+      tanggal_ttd,
+      skp,
+      karu,
+    });
+    if (!validation.valid) {
+      return res
+        .status(400)
+        .json({ success: false, message: validation.message });
+    }
+
+    // Ambil data dari database
+    const data = await fetchData(pegawai_id, skp, start_date, end_date, karu);
+
+    // Tentukan base URL
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+
+    // Siapkan data untuk template
+    const templateData = prepareTemplateData(
+      { ...data, end_date },
+      tanggal_ttd,
+      baseUrl
+    );
+
+    // Generate HTML
+    const html = generateHtmlTemplate(templateData);
+
+    // Generate dan kirim PDF
+    generatePdf(html, templateData.fileName, res);
   } catch (error) {
-    res.status(500).json({
+    console.error("Error in generateLaporanSkp:", error);
+    res.status(error.message.includes("not found") ? 404 : 500).json({
       success: false,
-      message: "Failed to generate report",
+      message: error.message.includes("not found")
+        ? error.message
+        : "Failed to generate report",
       error: error.message,
     });
   }
