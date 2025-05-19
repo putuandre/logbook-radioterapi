@@ -385,3 +385,26 @@ exports.validateEditJadwal = (req, res, next) => {
   }
   next();
 };
+
+exports.validateCsvUrl = (req, res, next) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({
+      success: false,
+      message: "URL is required",
+    });
+  }
+  if (!url.startsWith("https://docs.google.com/spreadsheets/")) {
+    return res.status(400).json({
+      success: false,
+      message: "URL must be a Google Spreadsheet link",
+    });
+  }
+  if (!url.includes("export?format=csv")) {
+    return res.status(400).json({
+      success: false,
+      message: "URL must be a Google Spreadsheet CSV export link",
+    });
+  }
+  next();
+};

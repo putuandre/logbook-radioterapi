@@ -2,6 +2,7 @@ const Jadwal = require("../models/jadwalModel");
 const { parse } = require("csv-parse");
 const fs = require("fs");
 const ExcelJS = require("exceljs");
+const axios = require("axios");
 
 exports.createJadwal = (req, res) => {
   const { rekam_medis, jadwal_date, jadwal_time } = req.body;
@@ -518,6 +519,202 @@ exports.exportPlanningExcel = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to export Excel",
+      error: err.message,
+    });
+  }
+};
+
+exports.importJadwalCsvFromUrl = async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({
+      success: false,
+      message: "URL is required",
+    });
+  }
+
+  const results = [];
+  const errors = [];
+  const totalRows = [];
+
+  const parser = parse({
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  });
+
+  const processRow = (row, callback) => {
+    const { rekam_medis, jadwal_date, jadwal_time } = row;
+
+    // Validate input
+    if (!rekam_medis || !jadwal_date || !jadwal_time) {
+      errors.push({
+        row: row,
+        message: "Rekam medis, jadwal_date, and jadwal_time are required",
+      });
+      return callback();
+    }
+    if (isNaN(Date.parse(jadwal_date))) {
+      errors.push({ row: row, message: "Invalid jadwal_date format" });
+      return callback();
+    }
+    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(jadwal_time)) {
+      errors.push({
+        row: row,
+        message: "Invalid jadwal_time format (use HH:MM or HH:MM:SS)",
+      });
+      return callback();
+    }
+
+    const jadwalData = {
+      rekam_medis,
+      jadwal_date,
+      jadwal_time,
+    };
+
+    // Step 1: Check for duplicate jadwal_date
+    Jadwal.checkDuplicateDate(
+      jadwalData.rekam_medis,
+      jadwalData.jadwal_date,
+      null,
+      (err, duplicateResults) => {
+        if (err) {
+          errors.push({ row: row, message: `Database error: ${err.message}` });
+          return callback();
+        }
+        if (duplicateResults.length > 0) {
+          errors.push({
+            row: row,
+            message:
+              "A jadwal record for this rekam_medis and jadwal_date already exists",
+          });
+          return callback();
+        }
+
+        // Step 2: Check for active planning
+        Jadwal.checkPlanningActive(
+          jadwalData.rekam_medis,
+          (err, planningResults) => {
+            if (err) {
+              errors.push({
+                row: row,
+                message: `Database error: ${err.message}`,
+              });
+              return callback();
+            }
+            if (planningResults.length === 0) {
+              errors.push({
+                row: row,
+                message:
+                  "No active planning record exists for this rekam_medis",
+              });
+              return callback();
+            }
+
+            // Step 3: Check fraksi limit
+            Jadwal.checkFraksiLimit(
+              jadwalData.rekam_medis,
+              (err, fraksiResults) => {
+                if (err) {
+                  errors.push({
+                    row: row,
+                    message: `Database error: ${err.message}`,
+                  });
+                  return callback();
+                }
+                const { total_fraksi, jadwal_count } = fraksiResults[0];
+                if (jadwal_count >= total_fraksi) {
+                  errors.push({
+                    row: row,
+                    message:
+                      "Jadwal count has reached or exceeded the total fraksi for this rekam_medis",
+                  });
+                  return callback();
+                }
+
+                // Step 4: Insert valid row
+                Jadwal.create(jadwalData, (err, result) => {
+                  if (err) {
+                    errors.push({
+                      row: row,
+                      message: `Failed to insert: ${err.message}`,
+                    });
+                    return callback();
+                  }
+                  results.push({ id: result.insertId, ...jadwalData });
+                  callback();
+                });
+              }
+            );
+          }
+        );
+      }
+    );
+  };
+
+  try {
+    // Fetch CSV from URL
+    const response = await axios.get(url, { responseType: "stream" });
+
+    // Check content type
+    const contentType = response.headers["content-type"];
+    if (
+      !contentType.includes("text/csv") &&
+      !contentType.includes("application/csv")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "URL does not point to a CSV file",
+      });
+    }
+
+    // Process CSV stream
+    response.data
+      .pipe(parser)
+      .on("data", (row) => {
+        totalRows.push(row);
+      })
+      .on("end", () => {
+        if (totalRows.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: "CSV file is empty",
+          });
+        }
+
+        const processNextRow = (index) => {
+          if (index >= totalRows.length) {
+            return res.status(200).json({
+              success: true,
+              data: {
+                total: totalRows.length,
+                inserted: results.length,
+                skipped: errors.length,
+                errors: errors,
+              },
+              message: "CSV import from URL completed",
+            });
+          }
+
+          processRow(totalRows[index], () => {
+            processNextRow(index + 1);
+          });
+        };
+
+        processNextRow(0);
+      })
+      .on("error", (err) => {
+        res.status(500).json({
+          success: false,
+          message: "Failed to parse CSV",
+          error: err.message,
+        });
+      });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch CSV from URL",
       error: err.message,
     });
   }

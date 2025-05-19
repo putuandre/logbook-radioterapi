@@ -21,6 +21,12 @@ router.post(
   validateMiddleware.validateCsvUpload,
   jadwalController.importJadwalCsv
 );
+router.post(
+  "/import-url",
+  authMiddleware.verifyToken,
+  validateMiddleware.validateCsvUrl,
+  jadwalController.importJadwalCsvFromUrl
+);
 router.put(
   "/:id",
   authMiddleware.verifyToken,
