@@ -1,6 +1,7 @@
 const Pasien = require("../models/pasienModel");
 const fs = require("fs");
 const { parse } = require("csv-parse");
+const axios = require("axios");
 
 exports.getAllPasien = (req, res) => {
   const { search = "", page = 1, limit = 10 } = req.query;
@@ -245,4 +246,162 @@ exports.importPasienCsv = (req, res) => {
         error: err.message,
       });
     });
+};
+
+exports.importPasienCsvFromUrl = async (req, res) => {
+  const { url } = req.body;
+  const results = [];
+  const skipped = [];
+
+  if (!url) {
+    return res.status(400).json({
+      success: false,
+      message: "URL is required",
+    });
+  }
+
+  try {
+    // Fetch CSV from URL
+    const response = await axios.get(url, { responseType: "stream" });
+
+    // Check content type
+    const contentType = response.headers["content-type"];
+    if (
+      !contentType.includes("text/csv") &&
+      !contentType.includes("application/csv")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "URL does not point to a CSV file",
+      });
+    }
+
+    response.data
+      .pipe(parse({ columns: true, trim: true }))
+      .on("data", (row) => {
+        results.push({
+          rekam_medis: row.rekam_medis,
+          nama_pasien: row.nama_pasien,
+          jenis_kelamin: row.jenis_kelamin,
+          tgl_lahir: row.tgl_lahir,
+          diagnosa: row.diagnosa || null,
+        });
+      })
+      .on("end", () => {
+        if (results.length === 0) {
+          return res
+            .status(400)
+            .json({ success: false, message: "CSV file is empty" });
+        }
+
+        // Cek duplikasi rekam_medis
+        const rekamMedisList = results.map((r) => r.rekam_medis);
+        Pasien.checkMultipleRekamMedis(rekamMedisList, (err, existing) => {
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: "Database error",
+              error: err.message,
+            });
+          }
+
+          const existingRekamMedis = existing.map((r) => r.rekam_medis);
+          const validRows = results.filter(
+            (row) => !existingRekamMedis.includes(row.rekam_medis)
+          );
+          const duplicateRows = results.filter((row) =>
+            existingRekamMedis.includes(row.rekam_medis)
+          );
+
+          // Tambahkan rekam_medis yang duplikat ke skipped
+          skipped.push(
+            ...duplicateRows.map((row) => ({
+              rekam_medis: row.rekam_medis,
+              reason: "Duplicate rekam_medis",
+            }))
+          );
+
+          if (validRows.length === 0) {
+            return res.json({
+              success: true,
+              data: {
+                imported: 0,
+                skipped: skipped.length,
+                skippedDetails: skipped,
+              },
+              message:
+                "No new data imported due to duplicate or invalid rekam_medis",
+            });
+          }
+
+          let importedCount = 0;
+          let processed = 0;
+
+          // Validasi dan import data yang valid
+          validRows.forEach((row) => {
+            if (
+              !row.rekam_medis ||
+              !row.nama_pasien ||
+              !["Laki-laki", "Perempuan"].includes(row.jenis_kelamin) ||
+              isNaN(Date.parse(row.tgl_lahir))
+            ) {
+              skipped.push({
+                rekam_medis: row.rekam_medis || "unknown",
+                reason: "Invalid data format",
+              });
+              processed++;
+              if (processed === validRows.length) {
+                res.json({
+                  success: true,
+                  data: {
+                    imported: importedCount,
+                    skipped: skipped.length,
+                    skippedDetails: skipped,
+                  },
+                  message: "CSV import completed",
+                });
+              }
+              return;
+            }
+
+            Pasien.create(row, (err, result) => {
+              processed++;
+              if (!err) {
+                importedCount++;
+              } else {
+                skipped.push({
+                  rekam_medis: row.rekam_medis,
+                  reason: err.message || "Database error",
+                });
+              }
+
+              if (processed === validRows.length) {
+                res.json({
+                  success: true,
+                  data: {
+                    imported: importedCount,
+                    skipped: skipped.length,
+                    skippedDetails: skipped,
+                  },
+                  message: "CSV import completed",
+                });
+              }
+            });
+          });
+        });
+      })
+      .on("error", (err) => {
+        res.status(500).json({
+          success: false,
+          message: "Error parsing CSV",
+          error: err.message,
+        });
+      });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch CSV from URL",
+      error: err.message,
+    });
+  }
 };

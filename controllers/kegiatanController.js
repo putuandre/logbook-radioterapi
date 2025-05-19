@@ -2,6 +2,7 @@ const Kegiatan = require("../models/kegiatanModel");
 const pool = require("../config/database");
 const csvParse = require("csv-parse");
 const { Readable } = require("stream");
+const axios = require("axios");
 
 exports.getAllKegiatan = (req, res) => {
   const { search = "", skp_id = null, page = 1, limit = 10 } = req.query;
@@ -226,6 +227,149 @@ exports.importCsv = async (req, res) => {
       success: false,
       message: "Error processing CSV file",
       error: error.message,
+    });
+  }
+};
+
+exports.importCsvFromUrl = async (req, res) => {
+  const { url, skp_id } = req.body;
+  const pegawai_id = req.user.id; // Dari JWT
+
+  if (!url || !skp_id) {
+    return res.status(400).json({
+      success: false,
+      message: "URL and skp_id are required",
+    });
+  }
+
+  const parsedSkpId = parseInt(skp_id);
+  if (isNaN(parsedSkpId) || parsedSkpId < 1) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid skp_id",
+    });
+  }
+
+  const results = [];
+  const errors = [];
+  let processedCount = 0;
+  let skippedCount = 0;
+
+  try {
+    // Fetch CSV from URL
+    const response = await axios.get(url, { responseType: "stream" });
+
+    // Check content type
+    const contentType = response.headers["content-type"];
+    if (
+      !contentType.includes("text/csv") &&
+      !contentType.includes("application/csv")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "URL does not point to a CSV file",
+      });
+    }
+
+    const parser = csvParse.parse({
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    });
+
+    for await (const record of response.data.pipe(parser)) {
+      const { tgl_kegiatan, rekam_medis } = record;
+
+      // Validate record
+      if (!tgl_kegiatan || !rekam_medis) {
+        errors.push({
+          row: processedCount + 1,
+          message: "Missing tgl_kegiatan or rekam_medis",
+        });
+        processedCount++;
+        continue;
+      }
+
+      if (isNaN(Date.parse(tgl_kegiatan))) {
+        errors.push({
+          row: processedCount + 1,
+          message: "Invalid tgl_kegiatan format",
+        });
+        processedCount++;
+        continue;
+      }
+
+      // Check for duplicates
+      const duplicateCheck = await new Promise((resolve) => {
+        Kegiatan.checkDuplicate(
+          parsedSkpId,
+          pegawai_id,
+          rekam_medis,
+          tgl_kegiatan,
+          (err, results) => {
+            if (err) {
+              errors.push({
+                row: processedCount + 1,
+                message: "Database error checking duplicates",
+                error: err.message,
+              });
+              resolve(true);
+            } else {
+              resolve(results.length > 0);
+            }
+          }
+        );
+      });
+
+      if (duplicateCheck) {
+        skippedCount++;
+        processedCount++;
+        continue;
+      }
+
+      // Insert valid record
+      const insertResult = await new Promise((resolve) => {
+        Kegiatan.create(
+          {
+            skp_id: parsedSkpId,
+            pegawai_id,
+            rekam_medis,
+            tgl_kegiatan,
+          },
+          (err, result) => {
+            if (err) {
+              errors.push({
+                row: processedCount + 1,
+                message: "Failed to insert record",
+                error: err.message,
+              });
+              resolve(false);
+            } else {
+              results.push({ id: result.insertId });
+              resolve(true);
+            }
+          }
+        );
+      });
+
+      processedCount++;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        inserted: results.length,
+        skipped: skippedCount,
+        total_processed: processedCount,
+        errors,
+      },
+      message: "CSV import from URL completed",
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch CSV from URL",
+      error: err.message,
     });
   }
 };

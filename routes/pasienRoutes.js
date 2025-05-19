@@ -34,5 +34,11 @@ router.post(
   validateMiddleware.validateCsvUpload,
   pasienController.importPasienCsv
 );
+router.post(
+  "/import-url",
+  authMiddleware.verifyToken,
+  validateMiddleware.validateCsvUrl,
+  pasienController.importPasienCsvFromUrl
+);
 
 module.exports = router;

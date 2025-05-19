@@ -26,6 +26,12 @@ router.post(
   validateMiddleware.validateCsvUpload,
   kegiatanController.importCsv
 );
+router.post(
+  "/import-url",
+  authMiddleware.verifyToken,
+  validateMiddleware.validateCsvUrl,
+  kegiatanController.importCsvFromUrl
+);
 router.put(
   "/:id",
   authMiddleware.verifyToken,
