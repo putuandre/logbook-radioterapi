@@ -332,7 +332,7 @@ exports.validatePlanning = (req, res, next) => {
       message: "Fraksi must be a positive number",
     });
   }
-  if (active !== undefined && ![0, 1].includes(parseInt(active))) {
+  if (active !== undefined && ![0, 1, 2].includes(parseInt(active))) {
     return res
       .status(400)
       .json({ success: false, message: "Active must be 0 or 1" });

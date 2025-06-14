@@ -23,7 +23,7 @@ exports.createPlanning = (req, res) => {
       message: "Fraksi must be a positive number",
     });
   }
-  if (![0, 1].includes(parseInt(active))) {
+  if (![0, 1, 2].includes(parseInt(active))) {
     return res.status(400).json({
       success: false,
       message: "Active must be 0 or 1",
@@ -80,7 +80,8 @@ exports.getAllPlanning = (req, res) => {
   const { search = "", active, page = 1, limit = 10 } = req.query;
   const parsedPage = parseInt(page);
   const parsedLimit = parseInt(limit);
-  const activeFilter = active === "1" ? 1 : active === "0" ? 0 : null;
+  const activeFilter =
+    active === "1" ? 1 : active === "0" ? 0 : active === "2" ? 2 : null;
 
   if (
     isNaN(parsedPage) ||
@@ -148,7 +149,7 @@ exports.updatePlanning = (req, res) => {
       message: "Fraksi must be a positive number",
     });
   }
-  if (![0, 1].includes(parseInt(active))) {
+  if (![0, 1, 2].includes(parseInt(active))) {
     return res.status(400).json({
       success: false,
       message: "Active must be 0 or 1",
